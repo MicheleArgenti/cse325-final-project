@@ -1,8 +1,211 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@using Microsoft.AspNetCore.Identity
+@using RecipeManagement.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@model HomeViewModel
+
+@{
+    ViewData["Title"] = "Welcome";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<div class="animate-fade-in">
+    <!-- Hero Section -->
+    <div class="hero-section text-center mb-5">
+        <div class="hero-content">
+            <div class="hero-icon mb-3">
+                <i class="fas fa-utensils fa-4x"></i>
+            </div>
+            <h1 class="display-4 fw-bold mb-3">
+                Welcome to Recipe Manager
+            </h1>
+            <p class="lead mb-4">
+                Discover, create, and share delicious recipes with food lovers around the world.
+            </p>
+
+            @if (SignInManager.IsSignedIn(User))
+            {
+                <div class="welcome-user mb-4">
+                    <div class="user-greeting-card">
+                        <i class="fas fa-user-circle fa-2x me-3"></i>
+                        <div class="text-start">
+                            <h4 class="mb-0">Welcome back, @Model.UserName!</h4>
+                            <p class="mb-0 text-muted">You've created @Model.UserRecipesCount amazing
+                                recipe@(Model.UserRecipesCount != 1 ? "s" : "")</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-buttons">
+                        <a asp-controller="Recipes" asp-action="Create" class="btn btn-primary-custom btn-lg">
+                            <i class="fas fa-plus-circle me-2"></i>Share a Recipe
+                        </a>
+                        <a asp-controller="Recipes" asp-action="Index" class="btn btn-outline-custom btn-lg ms-3">
+                            <i class="fas fa-search me-2"></i>Browse Recipes
+                        </a>
+                    </div>
+                }
+            else
+                {
+                    <div class="hero-buttons">
+                        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary-custom btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Get Started
+                        </a>
+                        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-custom btn-lg ms-3">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="stats-section mb-5">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="stat-number">@Model.TotalRecipes</div>
+                        <div class="stat-label">Total Recipes</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-number">@Model.TotalUsers</div>
+                        <div class="stat-label">Happy Cooks</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-number">Community</div>
+                        <div class="stat-label">Shared Recipes</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Recipes Section -->
+        @if (Model.RecentRecipes.Any())
+        {
+            <div class="section mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="section-title">
+                        <i class="fas fa-clock me-2"></i>Recent Recipes
+                    </h2>
+                    <a asp-controller="Recipes" asp-action="Index" class="btn btn-sm btn-outline-custom">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="recipes-grid">
+                    @foreach (var recipe in Model.RecentRecipes)
+                    {
+                        <div class="recipe-card">
+                            <div class="card-img-container">
+                                @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+                                {
+                                    <img src="@recipe.ImageUrl" class="recipe-image" alt="@recipe.Title">
+                                }
+                                else
+                                {
+                                    <div class="no-image">
+                                        <i class="fas fa-image fa-3x"></i>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-content">
+                                <h5 class="recipe-title">@recipe.Title</h5>
+                                <p class="recipe-description">
+                                    @(recipe.Description?.Length > 80 ? recipe.Description.Substring(0, 80) + "..." :
+                            recipe.Description)
+                                </p>
+                                <div class="badge-container">
+                                    <span class="custom-badge badge-difficulty">
+                                        <i class="fas fa-chart-line me-1"></i>@recipe.Difficulty
+                                    </span>
+                                    <span class="custom-badge badge-time">
+                                        <i class="far fa-clock me-1"></i>@(recipe.PrepTimeMinutes + recipe.CookTimeMinutes) min
+                                    </span>
+                                </div>
+                                <div class="recipe-meta">
+                                    <i class="fas fa-user-circle me-1"></i>
+                                    @(!string.IsNullOrEmpty(recipe.User?.FirstName) ? $"{recipe.User.FirstName}                 {recipe.User.LastName}" : (recipe.User?.UserName ?? "Unknown"))
+                                    <br />
+                                    <i class="far fa-calendar-alt me-1"></i>
+                                    @recipe.CreatedAt.ToString("MMM dd, yyyy")
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a asp-controller="Recipes" asp-action="Details" asp-route-id="@recipe.Id"
+                                   class="btn btn-view w-100">
+                                    <i class="fas fa-eye me-1"></i>View Recipe
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Features Section -->
+        <div class="features-section mb-5">
+            <h2 class="section-title text-center mb-4">
+                <i class="fas fa-star me-2"></i>Why Choose Recipe Manager?
+            </h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h4>Share Your Recipes</h4>
+                        <p>Easily create and share your favorite recipes with the community. Add ingredients, instructions,
+                            and photos.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="feature-card text-center">
+                            <div class="feature-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h4>Discover New Dishes</h4>
+                            <p>Browse through hundreds of recipes from cooks around the world. Find inspiration for your next
+                                meal.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-card text-center">
+                                <div class="feature-icon">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                                <h4>Save Favorites</h4>
+                                <p>Create your personal collection of recipes you love. Access them anytime, anywhere.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call to Action Section -->
+                <div class="cta-section text-center">
+                    <div class="cta-content">
+                        <h3 class="mb-3">Ready to Start Your Culinary Journey?</h3>
+                        <p class="mb-4">Join our community of food lovers and share your passion for cooking.</p>
+                        @if (!SignInManager.IsSignedIn(User))
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary-custom btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Join Now - It's Free!
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Recipes" asp-action="Create" class="btn btn-primary-custom btn-lg">
+                                <i class="fas fa-plus-circle me-2"></i>Share Your First Recipe
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
