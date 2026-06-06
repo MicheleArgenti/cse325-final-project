@@ -1,0 +1,28 @@
+@page
+@using Microsoft.AspNetCore.Identity
+@using RecipeManagement.Models
+@inject SignInManager<ApplicationUser> SignInManager
+
+@{
+  ViewData["Title"] = "Log out";
+}
+
+@functions {
+  public async Task<IActionResult> OnGet()
+  {
+    await SignInManager.SignOutAsync();
+    return Page();
+  }
+
+  public async Task<IActionResult> OnPost()
+  {
+    await SignInManager.SignOutAsync();
+    return RedirectToPage("/Index");
+  }
+}
+
+<div class="text-center mt-5">
+  <h1>@ViewData["Title"]</h1>
+  <p>You have successfully logged out of the application.</p>
+  <a asp-page="/Index" class="btn btn-primary">Return to Home</a>
+</div>

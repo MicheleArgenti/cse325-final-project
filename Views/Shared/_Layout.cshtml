@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2c7da0" />
+    <title>@ViewData["Title"] - Recipe Manager</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/recipe-styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Recipe Manager" />
+    <meta name="theme-color" content="#2c7da0" />
+    <!-- iOS Icons -->
+    <link rel="apple-touch-icon" href="/images/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icon-192x192.png" />
+    <!-- Android Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/icon-512x512.png" />
+    <!-- Splash Screen for iOS -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                <i class="fas fa-utensils me-2"></i>Recipe Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="navbar-collapse collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                            <i class="fas fa-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-area="" asp-controller="Recipes" asp-action="Index">
+                            <i class="fas fa-book-open me-1"></i>Recipes
+                        </a>
+                    </li>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Recipes" asp-action="MyRecipes">
+                                <i class="fas fa-user-chef me-1"></i>My Recipes
+                            </a>
+                        </li>
+                    }
+                </ul>
+                <partial name="_LoginPartial" />
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container animate-fade-in">
+        <div class="container">
+            <main role="main">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <i class="fas fa-heart text-danger me-1"></i>
+                    Made with love for food lovers
+                    <br />
+                    <small class="mt-2 d-block">
+                        &copy; @DateTime.Now.Year - Recipe Management System
+                    </small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- PWA Installation Script -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js')
+        .then(function (registration) {
+        console.log('Service Worker registered successfully:', registration.scope);
+
+        // Check for updates
+        registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        console.log('New service worker found:', newWorker);
+        });
+        })
+        .catch(function (error) {
+        console.log('Service Worker registration failed:', error);
+        });
+        });
+        }
+
+        // PWA Installation prompt
+        let deferredPrompt;
+        const installBtn = document.createElement('button');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later
+        deferredPrompt = e;
+        // Show install button (optional)
+        showInstallPromotion();
+        });
+
+        function showInstallPromotion() {
+        // Create a floating install button
+        installBtn.innerHTML = '<i class="fas fa-download me-2"></i>Install App';
+        installBtn.className = 'btn btn-primary-custom btn-custom install-pwa-btn';
+        installBtn.style.position = 'fixed';
+        installBtn.style.bottom = '80px';
+        installBtn.style.right = '20px';
+        installBtn.style.zIndex = '1000';
+        installBtn.style.borderRadius = '50px';
+        installBtn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+
+        installBtn.addEventListener('click', async () => {
+        installBtn.style.display = 'none';
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        deferredPrompt = null;
+        });
+
+        document.body.appendChild(installBtn);
+
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+        if (installBtn.style.display !== 'none') {
+        installBtn.style.opacity = '0';
+        setTimeout(() => {
+        installBtn.style.display = 'none';
+        }, 1000);
+        }
+        }, 10000);
+        }
+
+        // Hide install button when app is launched from home screen
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+        if (installBtn) installBtn.style.display = 'none';
+        console.log('App is running in standalone mode');
+        }
+
+        // Handle online/offline status
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        function updateOnlineStatus() {
+        const status = navigator.onLine ? 'online' : 'offline';
+        console.log(`App is now ${status}`);
+
+        // Show notification when offline
+        if (!navigator.onLine) {
+        showOfflineNotification();
+        }
+        }
+
+        function showOfflineNotification() {
+        const notification = document.createElement('div');
+        notification.innerHTML = '<i class="fas fa-wifi me-2"></i>You are offline. Some features may be limited.';
+        notification.style.position = 'fixed';
+        notification.style.top = '0';
+        notification.style.left = '0';
+        notification.style.right = '0';
+        notification.style.backgroundColor = '#ffc107';
+        notification.style.color = '#333';
+        notification.style.padding = '10px';
+        notification.style.textAlign = 'center';
+        notification.style.zIndex = '9999';
+        notification.style.fontSize = '14px';
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 1000);
+        }, 5000);
+        }
+
+        // Check for app updates
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,84 @@
+@model RecipeManagement.Models.Recipe
+
+@{
+  ViewData["Title"] = Model.Title;
+}
+
+<div class="detail-container animate-fade-in">
+  <div class="detail-card">
+    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+    {
+      <img src="@Model.ImageUrl" class="w-100" style="max-height: 400px; object-fit: cover;" alt="@Model.Title">
+    }
+    <div class="detail-header">
+      <h1>@Model.Title</h1>
+      <div class="detail-badges">
+        <span class="custom-badge badge-difficulty">
+          <i class="fas fa-chart-line me-1"></i>@Model.Difficulty
+        </span>
+        <span class="custom-badge badge-time">
+          <i class="far fa-clock me-1"></i>Prep: @Model.PrepTimeMinutes min
+        </span>
+        <span class="custom-badge badge-time">
+          <i class="fas fa-fire me-1"></i>Cook: @Model.CookTimeMinutes min
+        </span>
+        <span class="custom-badge badge-servings">
+          <i class="fas fa-users me-1"></i>@Model.Servings servings
+        </span>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section">
+        <h4><i class="fas fa-align-left me-2"></i>Description</h4>
+        <p class="lead">@Model.Description</p>
+      </div>
+
+      <div class="detail-section">
+        <h4><i class="fas fa-shopping-basket me-2"></i>Ingredients</h4>
+        <div class="ingredients-box">
+          @Html.Raw(Model.Ingredients.Replace("\n", "<br />"))
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4><i class="fas fa-list-ol me-2"></i>Instructions</h4>
+        <div class="instructions-box">
+          @Html.Raw(Model.Instructions.Replace("\n", "<br />"))
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="alert alert-info">
+          <i class="fas fa-user-circle me-2"></i>
+          Created by: @(!string.IsNullOrEmpty(Model.User?.FirstName) ? $"{Model.User.FirstName} {Model.User.LastName}" :
+                              (Model.User?.UserName ?? "Unknown"))
+          <br />
+          <i class="far fa-calendar-alt me-2 mt-2"></i>
+          Created on: @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+          @if (Model.UpdatedAt.HasValue)
+          {
+            <br />
+            <i class="fas fa-edit me-2 mt-2"></i>
+            <span>Last updated: @Model.UpdatedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+          }
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Index" class="btn btn-secondary">
+          <i class="fas fa-arrow-left me-2"></i>Back to List
+        </a>
+        @if (User.Identity.IsAuthenticated && (User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+== Model.UserId || User.IsInRole("Admin")))
+        {
+          <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+            <i class="fas fa-edit me-2"></i>Edit Recipe
+          </a>
+          <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+            <i class="fas fa-trash me-2"></i>Delete Recipe
+          </a>
+        }
+      </div>
+    </div>
+  </div>
+</div>

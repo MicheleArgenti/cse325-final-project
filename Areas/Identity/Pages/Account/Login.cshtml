@@ -1,0 +1,94 @@
+@page
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using Microsoft.AspNetCore.Identity
+@using RecipeManagement.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+  ViewData["Title"] = "Log in";
+}
+
+@functions {
+  [BindProperty]
+  public string Email { get; set; } = string.Empty;
+
+  [BindProperty]
+  public string Password { get; set; } = string.Empty;
+
+  [BindProperty]
+  public bool RememberMe { get; set; }
+
+  public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+  {
+    returnUrl ??= Url.Content("~/");
+
+    if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
+    {
+      ModelState.AddModelError(string.Empty, "Email and password are required.");
+      return Page();
+    }
+
+    var user = await UserManager.FindByEmailAsync(Email);
+    if (user != null)
+    {
+      var result = await SignInManager.PasswordSignInAsync(user.UserName ?? Email, Password, RememberMe, lockoutOnFailure:
+false);
+      if (result.Succeeded)
+      {
+        return LocalRedirect(returnUrl);
+      }
+    }
+
+    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+    return Page();
+  }
+}
+
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h3 class="mb-0">Log In</h3>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          @Html.AntiForgeryToken()
+          <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+          <div class="form-group mb-3">
+            <label class="form-label fw-bold">Email Address</label>
+            <input asp-for="Email" class="form-control" type="email" required />
+            <span asp-validation-for="Email" class="text-danger"></span>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label fw-bold">Password</label>
+            <input asp-for="Password" class="form-control" type="password" required />
+            <span asp-validation-for="Password" class="text-danger"></span>
+          </div>
+
+          <div class="form-group mb-3">
+            <div class="form-check">
+              <input asp-for="RememberMe" class="form-check-input" />
+              <label asp-for="RememberMe" class="form-check-label">Remember me?</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary w-100">Log in</button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-center">
+        <p class="mb-0">
+          Don't have an account? <a asp-page="./Register">Register here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+  <partial name="_ValidationScriptsPartial" />
+}

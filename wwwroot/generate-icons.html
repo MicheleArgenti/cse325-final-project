@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Generate Icons</title>
+  <style>
+    canvas {
+      margin: 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Generate PWA Icons</h1>
+  <canvas id="canvas192" width="192" height="192"></canvas>
+  <canvas id="canvas512" width="512" height="512"></canvas>
+  <br />
+  <button onclick="downloadIcons()">Download Icons</button>
+
+  <script>
+    function drawIcon(ctx, size) {
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#2c7da0');
+      gradient.addColorStop(1, '#1f5068');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw plate/fork icon
+      ctx.fillStyle = 'white';
+      ctx.font = `${size * 0.5}px "Font Awesome 6 Free"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Simple text icon if Font Awesome not available
+      ctx.font = `${size * 0.4}px Arial`;
+      ctx.fillText('🍽️', size / 2, size / 2);
+
+      // Add text
+      ctx.font = `${size * 0.1}px Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText('Recipes', size / 2, size * 0.85);
+    }
+
+    const canvas192 = document.getElementById('canvas192');
+    const ctx192 = canvas192.getContext('2d');
+    drawIcon(ctx192, 192);
+
+    const canvas512 = document.getElementById('canvas512');
+    const ctx512 = canvas512.getContext('2d');
+    drawIcon(ctx512, 512);
+
+    function downloadIcons() {
+      const link192 = document.createElement('a');
+      link192.download = 'icon-192x192.png';
+      link192.href = canvas192.toDataURL();
+      link192.click();
+
+      setTimeout(() => {
+        const link512 = document.createElement('a');
+        link512.download = 'icon-512x512.png';
+        link512.href = canvas512.toDataURL();
+        link512.click();
+      }, 100);
+    }
+  </script>
+</body>
+
+</html>
