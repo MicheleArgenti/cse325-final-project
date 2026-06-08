@@ -10,9 +10,24 @@
     {
       <img src="@Model.ImageUrl" class="w-100" style="max-height: 400px; object-fit: cover;" alt="@Model.Title">
     }
+
     <div class="detail-header">
-      <h1>@Model.Title</h1>
-      <div class="detail-badges">
+      <div class="d-flex justify-content-between align-items-start">
+        <h1 class="mb-0">@Model.Title</h1>
+
+        @* FAVORITE BUTTON - Only show if user is logged in *@
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+          <form asp-action="ToggleFavorite" asp-route-id="@Model.Id" method="post" id="favoriteForm">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-favorite-large" id="favoriteBtn">
+              <i id="favoriteIcon" class="far fa-heart fa-2x"></i>
+            </button>
+          </form>
+        }
+      </div>
+
+      <div class="detail-badges mt-3">
         <span class="custom-badge badge-difficulty">
           <i class="fas fa-chart-line me-1"></i>@Model.Difficulty
         </span>
@@ -27,6 +42,7 @@
         </span>
       </div>
     </div>
+
     <div class="detail-body">
       <div class="detail-section">
         <h4><i class="fas fa-align-left me-2"></i>Description</h4>
@@ -82,3 +98,27 @@
     </div>
   </div>
 </div>
+
+@section Scripts {
+  <script>
+    // This script checks if the current recipe is already in favorites
+    // and updates the heart icon accordingly
+
+    @if (User.Identity?.IsAuthenticated == true)
+      {
+        <text>
+            fetch('/Recipes/CheckFavorite/@Model.Id')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.isFavorite) {
+                                    // Recipe is favorited - show solid red heart
+                                    const icon = document.getElementById('favoriteIcon');
+            icon.className = 'fas fa-heart fa-2x';
+            icon.style.color = '#e74c3c';
+                                }
+                            })
+                            .catch(error => console.log('Error checking favorite status:', error));
+        </text>
+    }
+  </script>
+}

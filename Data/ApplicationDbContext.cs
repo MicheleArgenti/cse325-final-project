@@ -12,6 +12,7 @@ namespace RecipeManagement.Data
     }
 
     public DbSet<Recipe> Recipes { get; set; }
+    public DbSet<Favorite> Favorites { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -24,8 +25,23 @@ namespace RecipeManagement.Data
           .HasForeignKey(r => r.UserId)
           .OnDelete(DeleteBehavior.Cascade);
 
-      // Remove the seed data - comment out or delete this section
-      // builder.Entity<Recipe>().HasData(...)
+      // Configure Favorite relationships
+      builder.Entity<Favorite>()
+          .HasOne(f => f.User)
+          .WithMany()
+          .HasForeignKey(f => f.UserId)
+          .OnDelete(DeleteBehavior.Cascade);
+
+      builder.Entity<Favorite>()
+          .HasOne(f => f.Recipe)
+          .WithMany()
+          .HasForeignKey(f => f.RecipeId)
+          .OnDelete(DeleteBehavior.Cascade);
+
+      // Ensure a user can only favorite a recipe once
+      builder.Entity<Favorite>()
+          .HasIndex(f => new { f.UserId, f.RecipeId })
+          .IsUnique();
     }
   }
 }

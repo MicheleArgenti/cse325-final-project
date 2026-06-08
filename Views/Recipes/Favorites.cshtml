@@ -1,0 +1,89 @@
+@model IEnumerable<RecipeManagement.Models.Recipe>
+
+@{
+  ViewData["Title"] = "My Favorite Recipes";
+}
+
+<div class="animate-fade-in">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+    <h1 class="mb-3 mb-md-0">
+      <i class="fas fa-heart me-2" style="color: #e74c3c;"></i>
+      My Favorite Recipes
+    </h1>
+  </div>
+
+  @if (!Model.Any())
+  {
+    <div class="empty-state">
+      <div class="empty-state-icon">❤️</div>
+      <h4>No favorite recipes yet</h4>
+      <p>Start adding recipes to your favorites by clicking the heart icon on any recipe.</p>
+      <a asp-action="Index" class="btn btn-primary-custom">
+        <i class="fas fa-search me-2"></i>Browse Recipes
+      </a>
+    </div>
+  }
+  else
+  {
+    <div class="recipes-grid">
+      @foreach (var item in Model)
+      {
+        <div class="recipe-card">
+          <div class="card-img-container">
+            @if (!string.IsNullOrEmpty(item.ImageUrl))
+            {
+              <img src="@item.ImageUrl" class="recipe-image" alt="@item.Title">
+            }
+            else
+            {
+              <div class="no-image">
+                <i class="fas fa-image fa-3x"></i>
+              </div>
+            }
+            <div class="favorite-badge">
+              <i class="fas fa-heart"></i>
+            </div>
+          </div>
+          <div class="card-content">
+            <h5 class="recipe-title">@item.Title</h5>
+            <p class="recipe-description">
+              @(item.Description?.Length > 100 ? item.Description.Substring(0, 100) + "..." : item.Description)
+            </p>
+            <div class="badge-container">
+              <span class="custom-badge badge-difficulty">
+                <i class="fas fa-chart-line me-1"></i>@item.Difficulty
+              </span>
+              <span class="custom-badge badge-time">
+                <i class="far fa-clock me-1"></i>@(item.PrepTimeMinutes + item.CookTimeMinutes) min
+              </span>
+              <span class="custom-badge badge-servings">
+                <i class="fas fa-users me-1"></i>@item.Servings
+              </span>
+            </div>
+            <div class="recipe-meta">
+              <i class="fas fa-user-circle me-1"></i>
+              @(!string.IsNullOrEmpty(item.User?.FirstName) ? $"{item.User.FirstName} {item.User.LastName}" :
+(item.User?.UserName ?? "Unknown"))
+              <br />
+              <i class="far fa-calendar-alt me-1"></i>
+              @item.CreatedAt.ToString("MMM dd, yyyy")
+            </div>
+          </div>
+          <div class="card-footer bg-transparent">
+            <div class="button-group">
+              <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-view">
+                <i class="fas fa-eye me-1"></i>View
+              </a>
+              <form asp-action="ToggleFavorite" asp-route-id="@item.Id" method="post" style="flex: 1;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-favorite w-100">
+                  <i class="fas fa-heart-broken me-1"></i>Remove
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

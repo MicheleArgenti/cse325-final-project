@@ -920,3 +920,104 @@ select {
     gap: 0.75rem;
   }
 }
+
+/* Favorite Button Styles */
+.favorite-form {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.favorite-btn {
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.favorite-btn i {
+  font-size: 1.2rem;
+  color: #999;
+  transition: all 0.3s ease;
+}
+
+.favorite-btn:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+.favorite-btn:hover i {
+  color: #e74c3c;
+}
+
+.favorite-btn:active {
+  transform: scale(0.95);
+}
+
+.btn-favorite-large {
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-favorite-large:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+.favorite-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #e74c3c;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.favorite-badge i {
+  color: white;
+  font-size: 1rem;
+}
+
+.btn-favorite {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-favorite:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  color: white;
+  background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+}
+
+/* Card image container needs position relative for favorite button */
+.card-img-container {
+  position: relative;
+  overflow: hidden;
+  height: 200px;
+  background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+}

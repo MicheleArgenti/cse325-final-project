@@ -356,6 +356,90 @@ namespace RecipeManagement.Controllers
       return View(viewModel);
     }
 
+    // POST: Recipes/ToggleFavorite/5
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> ToggleFavorite(int id)
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Unauthorized();
+      }
+
+      var recipe = await _context.Recipes.FindAsync(id);
+      if (recipe == null)
+      {
+        return NotFound();
+      }
+
+      // Check if already favorited
+      var existingFavorite = await _context.Favorites
+          .FirstOrDefaultAsync(f => f.UserId == user.Id && f.RecipeId == id);
+
+      if (existingFavorite != null)
+      {
+        // Remove from favorites
+        _context.Favorites.Remove(existingFavorite);
+        await _context.SaveChangesAsync();
+        TempData["Message"] = "Recipe removed from favorites";
+      }
+      else
+      {
+        // Add to favorites
+        var favorite = new Favorite
+        {
+          UserId = user.Id,
+          RecipeId = id,
+          CreatedAt = DateTime.Now
+        };
+        _context.Favorites.Add(favorite);
+        await _context.SaveChangesAsync();
+        TempData["Message"] = "Recipe added to favorites";
+      }
+
+      // Return to previous page
+      return Redirect(Request.Headers["Referer"].ToString());
+    }
+
+    // GET: Recipes/Favorites
+    [Authorize]
+    public async Task<IActionResult> Favorites()
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Challenge();
+      }
+
+      var favoriteRecipes = await _context.Favorites
+          .Include(f => f.Recipe)
+              .ThenInclude(r => r.User)
+          .Where(f => f.UserId == user.Id)
+          .OrderByDescending(f => f.CreatedAt)
+          .Select(f => f.Recipe)
+          .ToListAsync();
+
+      return View(favoriteRecipes);
+    }
+
+    // GET: Recipes/CheckFavorite/5 (for API calls)
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> CheckFavorite(int id)
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Json(new { isFavorite = false });
+      }
+
+      var isFavorite = await _context.Favorites
+          .AnyAsync(f => f.UserId == user.Id && f.RecipeId == id);
+
+      return Json(new { isFavorite = isFavorite });
+    }
+
     private bool RecipeExists(int id)
     {
       return _context.Recipes.Any(e => e.Id == id);
