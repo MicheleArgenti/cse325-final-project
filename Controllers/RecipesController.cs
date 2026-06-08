@@ -214,6 +214,148 @@ namespace RecipeManagement.Controllers
       return View(recipes);
     }
 
+    // GET: Recipes/Search
+    [AllowAnonymous]
+    public async Task<IActionResult> Search(string searchTerm, string? difficulty, int? minPrepTime, int? maxPrepTime, string? sortBy)
+    {
+      var viewModel = new RecipeSearchViewModel
+      {
+        SearchTerm = searchTerm,
+        Difficulty = difficulty,
+        MinPrepTime = minPrepTime,
+        MaxPrepTime = maxPrepTime,
+        SortBy = sortBy
+      };
+
+      // Start with all recipes
+      var query = _context.Recipes
+          .Include(r => r.User)
+          .AsQueryable();
+
+      // Apply search term filter
+      if (!string.IsNullOrWhiteSpace(searchTerm))
+      {
+        searchTerm = searchTerm.ToLower();
+        query = query.Where(r =>
+            r.Title.ToLower().Contains(searchTerm) ||
+            r.Description.ToLower().Contains(searchTerm) ||
+            r.Ingredients.ToLower().Contains(searchTerm) ||
+            r.Instructions.ToLower().Contains(searchTerm) ||
+            (r.User != null && (r.User.FirstName + " " + r.User.LastName).ToLower().Contains(searchTerm)) ||
+            (r.User != null && r.User.UserName != null && r.User.UserName.ToLower().Contains(searchTerm))
+        );
+      }
+
+      // Apply difficulty filter
+      if (!string.IsNullOrWhiteSpace(difficulty))
+      {
+        query = query.Where(r => r.Difficulty == difficulty);
+      }
+
+      // Apply time filters
+      if (minPrepTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) >= minPrepTime.Value);
+      }
+      if (maxPrepTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) <= maxPrepTime.Value);
+      }
+
+      // Apply sorting
+      viewModel.SortBy = sortBy;
+      query = sortBy switch
+      {
+        "Oldest First" => query.OrderBy(r => r.CreatedAt),
+        "Most Difficult" => query.OrderByDescending(r => r.Difficulty == "Hard")
+            .ThenByDescending(r => r.Difficulty == "Medium")
+            .ThenBy(r => r.Difficulty == "Easy"),
+        "Least Difficult" => query.OrderBy(r => r.Difficulty == "Easy")
+            .ThenBy(r => r.Difficulty == "Medium")
+            .ThenByDescending(r => r.Difficulty == "Hard"),
+        "Shortest Time" => query.OrderBy(r => r.PrepTimeMinutes + r.CookTimeMinutes),
+        "Longest Time" => query.OrderByDescending(r => r.PrepTimeMinutes + r.CookTimeMinutes),
+        _ => query.OrderByDescending(r => r.CreatedAt) // Newest First
+      };
+
+      viewModel.Recipes = await query.ToListAsync();
+
+      return View(viewModel);
+    }
+
+    // GET: Recipes/SearchMyRecipes
+    public async Task<IActionResult> SearchMyRecipes(string searchTerm, string? difficulty, int? minPrepTime, int? maxPrepTime, string? sortBy)
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Challenge();
+      }
+
+      var viewModel = new RecipeSearchViewModel
+      {
+        SearchTerm = searchTerm,
+        Difficulty = difficulty,
+        MinPrepTime = minPrepTime,
+        MaxPrepTime = maxPrepTime,
+        SortBy = sortBy
+      };
+
+      // Start with user's recipes only
+      var query = _context.Recipes
+          .Where(r => r.UserId == user.Id)
+          .Include(r => r.User)
+          .AsQueryable();
+
+      // Apply search term filter
+      if (!string.IsNullOrWhiteSpace(searchTerm))
+      {
+        searchTerm = searchTerm.ToLower();
+        query = query.Where(r =>
+            r.Title.ToLower().Contains(searchTerm) ||
+            r.Description.ToLower().Contains(searchTerm) ||
+            r.Ingredients.ToLower().Contains(searchTerm) ||
+            r.Instructions.ToLower().Contains(searchTerm)
+        );
+      }
+
+      // Apply difficulty filter
+      if (!string.IsNullOrWhiteSpace(difficulty))
+      {
+        query = query.Where(r => r.Difficulty == difficulty);
+      }
+
+      // Apply time filters
+      if (minPrepTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) >= minPrepTime.Value);
+      }
+      if (maxPrepTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) <= maxPrepTime.Value);
+      }
+
+      // Apply sorting
+      viewModel.SortBy = sortBy;
+      query = sortBy switch
+      {
+        "Oldest First" => query.OrderBy(r => r.CreatedAt),
+        "Most Difficult" => query.OrderByDescending(r => r.Difficulty == "Hard")
+            .ThenByDescending(r => r.Difficulty == "Medium")
+            .ThenBy(r => r.Difficulty == "Easy"),
+        "Least Difficult" => query.OrderBy(r => r.Difficulty == "Easy")
+            .ThenBy(r => r.Difficulty == "Medium")
+            .ThenByDescending(r => r.Difficulty == "Hard"),
+        "Shortest Time" => query.OrderBy(r => r.PrepTimeMinutes + r.CookTimeMinutes),
+        "Longest Time" => query.OrderByDescending(r => r.PrepTimeMinutes + r.CookTimeMinutes),
+        _ => query.OrderByDescending(r => r.CreatedAt) // Newest First
+      };
+
+      viewModel.Recipes = await query.ToListAsync();
+
+      return View(viewModel);
+    }
+
     private bool RecipeExists(int id)
     {
       return _context.Recipes.Any(e => e.Id == id);
