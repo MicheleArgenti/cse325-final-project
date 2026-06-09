@@ -37,7 +37,7 @@
                         <a asp-controller="Recipes" asp-action="Create" class="btn btn-primary-custom btn-lg">
                             <i class="fas fa-plus-circle me-2"></i>Share a Recipe
                         </a>
-                        <a asp-controller="Recipes" asp-action="Index" class="btn btn-outline-custom btn-lg ms-3">
+                        <a asp-controller="Recipes" asp-action="Index" class="btn btn-primary-custom btn-lg">
                             <i class="fas fa-search me-2"></i>Browse Recipes
                         </a>
                     </div>
@@ -133,7 +133,7 @@
                                 </div>
                                 <div class="recipe-meta">
                                     <i class="fas fa-user-circle me-1"></i>
-                                    @(!string.IsNullOrEmpty(recipe.User?.FirstName) ? $"{recipe.User.FirstName}                 {recipe.User.LastName}" : (recipe.User?.UserName ?? "Unknown"))
+                                    @(!string.IsNullOrEmpty(recipe.User?.FirstName) ? $"{recipe.User.FirstName}                   {recipe.User.LastName}" : (recipe.User?.UserName ?? "Unknown"))
                                     <br />
                                     <i class="far fa-calendar-alt me-1"></i>
                                     @recipe.CreatedAt.ToString("MMM dd, yyyy")

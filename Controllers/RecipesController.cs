@@ -544,5 +544,87 @@ namespace RecipeManagement.Controllers
       return category?.Icon ?? "fa-tag";
     }
 
+    // GET: Recipes/GetReviews/5
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReviews(int recipeId)
+    {
+      var reviews = await _context.Reviews
+          .Include(r => r.User)
+          .Where(r => r.RecipeId == recipeId)
+          .OrderByDescending(r => r.CreatedAt)
+          .ToListAsync();
+
+      // Calculate average rating
+      var averageRating = reviews.Any() ? reviews.Average(r => r.Rating) : 0;
+
+      return Json(new { reviews, averageRating, totalReviews = reviews.Count });
+    }
+
+    // POST: Recipes/AddReview
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddReview(int recipeId, int rating, string? comment)
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Unauthorized();
+      }
+
+      // Check if user already reviewed this recipe
+      var existingReview = await _context.Reviews
+          .FirstOrDefaultAsync(r => r.UserId == user.Id && r.RecipeId == recipeId);
+
+      if (existingReview != null)
+      {
+        // Update existing review
+        existingReview.Rating = rating;
+        existingReview.Comment = comment;
+        existingReview.UpdatedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+        TempData["Success"] = "Your review has been updated!";
+      }
+      else
+      {
+        // Add new review
+        var review = new Review
+        {
+          UserId = user.Id,
+          RecipeId = recipeId,
+          Rating = rating,
+          Comment = comment,
+          CreatedAt = DateTime.Now
+        };
+        _context.Reviews.Add(review);
+        await _context.SaveChangesAsync();
+        TempData["Success"] = "Thank you for your review!";
+      }
+
+      return RedirectToAction(nameof(Details), new { id = recipeId });
+    }
+
+    // GET: Recipes/GetUserReview/5
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> GetUserReview(int recipeId)
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Json(new { hasReview = false });
+      }
+
+      var review = await _context.Reviews
+          .FirstOrDefaultAsync(r => r.UserId == user.Id && r.RecipeId == recipeId);
+
+      if (review != null)
+      {
+        return Json(new { hasReview = true, rating = review.Rating, comment = review.Comment });
+      }
+
+      return Json(new { hasReview = false });
+    }
+
   }
 }

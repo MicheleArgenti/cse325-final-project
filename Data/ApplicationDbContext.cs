@@ -15,6 +15,7 @@ namespace RecipeManagement.Data
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<RecipeCategory> RecipeCategories { get; set; }
+        public DbSet<Review> Reviews { get; set; } // Add this line
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -59,6 +60,24 @@ namespace RecipeManagement.Data
             // Ensure a user can only favorite a recipe once
             builder.Entity<Favorite>()
                 .HasIndex(f => new { f.UserId, f.RecipeId })
+                .IsUnique();
+
+            // Configure Review relationships
+            builder.Entity<Review>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Review>()
+                .HasOne(r => r.Recipe)
+                .WithMany()
+                .HasForeignKey(r => r.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Ensure a user can only review a recipe once
+            builder.Entity<Review>()
+                .HasIndex(r => new { r.UserId, r.RecipeId })
                 .IsUnique();
 
             // Seed default categories

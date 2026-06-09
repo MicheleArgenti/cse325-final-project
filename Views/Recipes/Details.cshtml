@@ -26,17 +26,20 @@
         }
       </div>
 
-      <!-- CATEGORY BADGES - Show all categories for this recipe -->
+      <!-- Category Badges -->
       <div class="category-badge-group mt-3 justify-content-center">
         @if (Model.RecipeCategories != null && Model.RecipeCategories.Any())
         {
           @foreach (var recipeCategory in Model.RecipeCategories)
           {
-            <span class="category-badge"
-                  style="background-color: @recipeCategory.Category.Color; font-size: 0.9rem; padding: 0.5rem 1rem;">
-              <i class="fas @recipeCategory.Category.Icon me-2"></i>
-              @recipeCategory.Category.Name
-            </span>
+            if (recipeCategory?.Category != null)
+            {
+              <span class="category-badge"
+                    style="background-color: @recipeCategory.Category.Color; font-size: 0.9rem; padding: 0.5rem 1rem;">
+                <i class="fas @recipeCategory.Category.Icon me-2"></i>
+                @recipeCategory.Category.Name
+              </span>
+            }
           }
         }
       </div>
@@ -77,6 +80,79 @@
         </div>
       </div>
 
+      <!-- REVIEWS SECTION - NEW -->
+      <div class="detail-section">
+        <h4><i class="fas fa-star me-2" style="color: #f39c12;"></i>Reviews & Ratings</h4>
+
+        <!-- Average Rating Display -->
+        <div id="averageRatingDisplay" class="text-center mb-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+
+        <!-- Add/Edit Review Form (only for logged in users) -->
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+          <div class="review-form-card mb-4" id="reviewFormContainer">
+            <div class="card">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0" id="reviewFormTitle">Write a Review</h5>
+              </div>
+              <div class="card-body">
+                <form id="reviewForm" method="post" asp-action="AddReview">
+                  @Html.AntiForgeryToken()
+                  <input type="hidden" name="recipeId" value="@Model.Id" />
+
+                  <div class="form-group mb-3">
+                    <label class="form-label fw-bold">Your Rating <span class="text-danger">*</span></label>
+                    <div class="star-rating">
+                      <input type="radio" id="star5" name="rating" value="5" />
+                      <label for="star5" title="5 stars">★</label>
+                      <input type="radio" id="star4" name="rating" value="4" />
+                      <label for="star4" title="4 stars">★</label>
+                      <input type="radio" id="star3" name="rating" value="3" />
+                      <label for="star3" title="3 stars">★</label>
+                      <input type="radio" id="star2" name="rating" value="2" />
+                      <label for="star2" title="2 stars">★</label>
+                      <input type="radio" id="star1" name="rating" value="1" />
+                      <label for="star1" title="1 star">★</label>
+                    </div>
+                    <div id="ratingError" class="text-danger mt-1" style="display: none;">Please select a rating</div>
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label class="form-label fw-bold">Comment (Optional)</label>
+                    <textarea name="comment" class="form-control" rows="3"
+                              placeholder="Share your thoughts about this recipe..."></textarea>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary-custom">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Review
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        }
+        else
+        {
+          <div class="alert alert-info text-center">
+            <i class="fas fa-sign-in-alt me-2"></i>
+            <a asp-area="Identity" asp-page="/Account/Login">Login</a> to leave a review
+          </div>
+        }
+
+        <!-- Reviews List -->
+        <div id="reviewsList">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading reviews...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="detail-section">
         <div class="alert alert-info">
           <i class="fas fa-user-circle me-2"></i>
@@ -114,6 +190,145 @@
 </div>
 
 @section Scripts {
+  <script>
+    // Load reviews when page loads
+    loadReviews();
+    loadUserReview();
+
+    function loadReviews() {
+      fetch('/Recipes/GetReviews?recipeId=@Model.Id')
+        .then(response => response.json())
+        .then(data => {
+          displayAverageRating(data.averageRating, data.totalReviews);
+          displayReviews(data.reviews);
+        })
+        .catch(error => console.log('Error loading reviews:', error));
+    }
+
+    function displayAverageRating(averageRating, totalReviews) {
+      const container = document.getElementById('averageRatingDisplay');
+      const fullStars = Math.floor(averageRating);
+      const hasHalfStar = (averageRating - fullStars) >= 0.5;
+
+      let starsHtml = '';
+      for (let i = 1; i <= 5; i++) {
+        if (i <= fullStars) {
+          starsHtml += '<i class="fas fa-star" style="color: #f39c12; font-size: 1.5rem;"></i>';
+        } else if (hasHalfStar && i === fullStars + 1) {
+          starsHtml += '<i class="fas fa-star-half-alt" style="color: #f39c12; font-size: 1.5rem;"></i>';
+        } else {
+          starsHtml += '<i class="far fa-star" style="color: #f39c12; font-size: 1.5rem;"></i>';
+        }
+      }
+
+      container.innerHTML = `
+                    <div class="average-rating">
+                        <div class="stars">${starsHtml}</div>
+                        <div class="rating-value">
+                            <span class="h2">${averageRating.toFixed(1)}</span>
+                            <span class="text-muted"> out of 5</span>
+                        </div>
+                        <div class="total-reviews text-muted">Based on ${totalReviews} review${totalReviews !== 1 ? 's' : ''}</div>
+                    </div>
+                `;
+    }
+
+    function displayReviews(reviews) {
+      const container = document.getElementById('reviewsList');
+
+      if (!reviews || reviews.length === 0) {
+        container.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-comment fa-3x mb-2"></i>
+                            <p>No reviews yet. Be the first to review this recipe!</p>
+                        </div>
+                    `;
+        return;
+      }
+
+      let html = '<div class="reviews-list">';
+      reviews.forEach(review => {
+        const stars = getStarsHtml(review.rating);
+        const userDisplayName = review.user?.firstName && review.user?.lastName
+          ? `${review.user.firstName} ${review.user.lastName}`
+          : (review.user?.userName || 'Anonymous');
+        const date = new Date(review.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        html += `
+                        <div class="review-item card mb-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="stars mb-2">${stars}</div>
+                                        <strong class="reviewer-name">${escapeHtml(userDisplayName)}</strong>
+                                        <span class="review-date text-muted ms-2">${date}</span>
+                                    </div>
+                                </div>
+                                ${review.comment ? `<p class="review-comment mt-2 mb-0">"${escapeHtml(review.comment)}"</p>` : '<p class="review-comment mt-2 mb-0 text-muted"><em>No comment provided</em></p>'}
+                            </div>
+                        </div>
+                    `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function getStarsHtml(rating) {
+      let stars = '';
+      for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+          stars += '<i class="fas fa-star" style="color: #f39c12;"></i>';
+        } else {
+          stars += '<i class="far fa-star" style="color: #f39c12;"></i>';
+        }
+      }
+      return stars;
+    }
+
+    function loadUserReview() {
+      fetch('/Recipes/GetUserReview?recipeId=@Model.Id')
+        .then(response => response.json())
+        .then(data => {
+          if (data.hasReview) {
+            // Pre-fill the form with existing review
+            document.querySelector(`input[name="rating"][value="${data.rating}"]`).checked = true;
+            document.querySelector('textarea[name="comment"]').value = data.comment || '';
+            document.getElementById('reviewFormTitle').innerText = 'Edit Your Review';
+            document.querySelector('#reviewForm button[type="submit"]').innerHTML = '<i class="fas fa-edit me-2"></i>Update Review';
+          }
+        })
+        .catch(error => console.log('Error loading user review:', error));
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Form validation
+    document.getElementById('reviewForm')?.addEventListener('submit', function (e) {
+      const ratingSelected = document.querySelector('input[name="rating"]:checked');
+      if (!ratingSelected) {
+        e.preventDefault();
+        document.getElementById('ratingError').style.display = 'block';
+        return false;
+      }
+      return true;
+    });
+
+    // Clear rating error when rating is selected
+    document.querySelectorAll('input[name="rating"]').forEach(radio => {
+      radio.addEventListener('change', function () {
+        document.getElementById('ratingError').style.display = 'none';
+      });
+    });
+  </script>
+
   <script>
     fetch('/Recipes/CheckFavorite/@Model.Id')
       .then(response => response.json())
