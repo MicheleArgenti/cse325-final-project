@@ -1,0 +1,236 @@
+@model RecipeManagement.Models.CategoryFilterViewModel
+
+@{
+  ViewData["Title"] = "Advanced Recipe Search";
+}
+
+<div class="animate-fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+      <i class="fas fa-sliders-h me-2" style="color: var(--primary-color);"></i>
+      Advanced Recipe Search
+    </h1>
+    <a asp-action="Index" class="btn btn-outline-custom">
+      <i class="fas fa-arrow-left me-2"></i>Back to Recipes
+    </a>
+  </div>
+
+  <!-- Advanced Search Form -->
+  <div class="search-card mb-4">
+    <form method="get" asp-action="FilterByMultipleCategories">
+      <!-- Search Term -->
+      <div class="form-group mb-3">
+        <label class="form-label fw-bold">
+          <i class="fas fa-search me-1"></i>Search by keyword
+        </label>
+        <input type="text" name="searchTerm" class="form-control"
+               placeholder="Search by title, ingredients, or description..." value="@Model.SearchTerm" />
+      </div>
+
+      <!-- Multiple Category Selection with Checkboxes -->
+      <div class="form-group mb-3">
+        <label class="form-label fw-bold">
+          <i class="fas fa-tags me-1"></i>Categories (Select multiple)
+        </label>
+        <div class="categories-checkbox-group filter-categories">
+          @foreach (var category in Model.AllCategories)
+          {
+            <label class="category-checkbox">
+              <input type="checkbox" name="selectedCategories" value="@category.Id"
+              @(Model.SelectedCategoryIds.Contains(category.Id) ? "checked" : "") />
+              <span class="checkbox-label" style="background-color: @category.Color">
+                <i class="fas @category.Icon me-1"></i>
+                @category.Name
+              </span>
+            </label>
+          }
+        </div>
+
+        <!-- Match logic toggle - OR (ANY) vs AND (ALL) -->
+        <div class="mt-3">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="matchAllCategories" id="matchAny" value="false"
+            @(!Model.MatchAllCategories ? "checked" : "") />
+            <label class="form-check-label" for="matchAny">
+              <i class="fas fa-circle-notch me-1"></i>Match ANY category (OR)
+            </label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="matchAllCategories" id="matchAll" value="true"
+            @(Model.MatchAllCategories ? "checked" : "") />
+            <label class="form-check-label" for="matchAll">
+              <i class="fas fa-check-circle me-1"></i>Match ALL categories (AND)
+            </label>
+          </div>
+        </div>
+
+        <small class="form-text text-muted">
+          <i class="fas fa-info-circle me-1"></i>
+          <span id="logicExplanation">
+            @if (!Model.MatchAllCategories)
+            {
+              <text>OR mode: Shows recipes that have ANY of the selected categories. Example: Selecting "Breakfast" and
+                "Lunch" shows recipes that are either Breakfast OR Lunch.</text>
+              }
+                        else
+              {
+                <text>AND mode: Shows recipes that have ALL of the selected categories. Example: Selecting "Breakfast" and
+                  "Lunch" shows recipes that are BOTH Breakfast AND Lunch.</text>
+                }
+              </span>
+            </small>
+          </div>
+
+          <div class="row">
+            <!-- Difficulty Filter -->
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label class="form-label fw-bold">Difficulty</label>
+                <select name="difficulty" class="form-select">
+                  <option value="">All Difficulties</option>
+                  <option value="Easy" selected="@(Model.Difficulty == "Easy")">Easy</option>
+                  <option value="Medium" selected="@(Model.Difficulty == "Medium")">Medium</option>
+                  <option value="Hard" selected="@(Model.Difficulty == "Hard")">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Time Range Filter -->
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label class="form-label fw-bold">Min Total Time (minutes)</label>
+                <input type="number" name="minTime" class="form-control" placeholder="Min minutes" value="@Model.MinTime" />
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label class="form-label fw-bold">Max Total Time (minutes)</label>
+                <input type="number" name="maxTime" class="form-control" placeholder="Max minutes" value="@Model.MaxTime" />
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary-custom">
+              <i class="fas fa-search me-2"></i>Search Recipes
+            </button>
+            <a asp-action="FilterByMultipleCategories" class="btn btn-secondary">
+              <i class="fas fa-eraser me-2"></i>Clear All Filters
+            </a>
+          </div>
+        </form>
+      </div>
+
+      <!-- Results Count -->
+      <div class="results-info mb-3">
+        <p class="text-muted">
+          Found <strong>@Model.Recipes.Count</strong> recipe@(Model.Recipes.Count != 1 ? "s" : "")
+          @if (Model.SelectedCategoryIds.Any())
+          {
+            <span>in selected categories</span>
+          }
+          @if (!string.IsNullOrEmpty(Model.SearchTerm))
+          {
+            <span>matching "<strong>@Model.SearchTerm</strong>"</span>
+          }
+        </p>
+      </div>
+
+      <!-- Results Grid -->
+      @if (!Model.Recipes.Any())
+      {
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <h4>No recipes found</h4>
+          <p>Try adjusting your search criteria or selecting different categories.</p>
+          <a asp-action="FilterByMultipleCategories" class="btn btn-primary-custom">Clear Filters</a>
+        </div>
+      }
+      else
+      {
+        <div class="recipes-grid">
+          @foreach (var item in Model.Recipes)
+          {
+            <div class="recipe-card">
+              <div class="card-img-container">
+                @if (!string.IsNullOrEmpty(item.ImageUrl))
+                {
+                  <img src="@item.ImageUrl" class="recipe-image" alt="@item.Title">
+                }
+                else
+                {
+                  <div class="no-image">
+                    <i class="fas fa-image fa-3x"></i>
+                  </div>
+                }
+              </div>
+              <div class="card-content">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="recipe-title mb-0">@item.Title</h5>
+                  <div class="category-badge-group">
+                    @if (item.RecipeCategories != null && item.RecipeCategories.Any())
+                    {
+                      @foreach (var recipeCategory in item.RecipeCategories.Take(2))
+                      {
+                        <span class="category-badge" style="background-color: @recipeCategory.Category.Color">
+                          <i class="fas @recipeCategory.Category.Icon me-1"></i>
+                          @recipeCategory.Category.Name
+                        </span>
+                      }
+                      @if (item.RecipeCategories.Count() > 2)
+                      {
+                        <span class="category-badge-more">
+                          +@(item.RecipeCategories.Count() - 2)
+                        </span>
+                      }
+                    }
+                  </div>
+                </div>
+                <p class="recipe-description">
+                  @(item.Description?.Length > 100 ? item.Description.Substring(0, 100) + "..." : item.Description)
+                </p>
+                <div class="badge-container">
+                  <span class="custom-badge badge-difficulty">
+                    <i class="fas fa-chart-line me-1"></i>@item.Difficulty
+                  </span>
+                  <span class="custom-badge badge-time">
+                    <i class="far fa-clock me-1"></i>@(item.PrepTimeMinutes + item.CookTimeMinutes) min
+                  </span>
+                  <span class="custom-badge badge-servings">
+                    <i class="fas fa-users me-1"></i>@item.Servings
+                  </span>
+                </div>
+                <div class="recipe-meta">
+                  <i class="fas fa-user-circle me-1"></i>
+                  @(!string.IsNullOrEmpty(item.User?.FirstName) ? $"{item.User.FirstName} {item.User.LastName}" :
+(item.User?.UserName ?? "Unknown"))
+                  <br />
+                  <i class="far fa-calendar-alt me-1"></i>
+                  @item.CreatedAt.ToString("MMM dd, yyyy")
+                </div>
+              </div>
+              <div class="card-footer bg-transparent">
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-view w-100">
+                  <i class="fas fa-eye me-1"></i>View Recipe
+                </a>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <script>
+      // Update explanation text when radio buttons change
+      document.querySelectorAll('input[name="matchAllCategories"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+          const explanation = document.getElementById('logicExplanation');
+          if (this.value === 'false' && this.checked) {
+            explanation.innerHTML = 'OR mode: Shows recipes that have ANY of the selected categories. Example: Selecting "Breakfast" and "Lunch" shows recipes that are either Breakfast OR Lunch.';
+          } else if (this.value === 'true' && this.checked) {
+            explanation.innerHTML = 'AND mode: Shows recipes that have ALL of the selected categories. Example: Selecting "Breakfast" and "Lunch" shows recipes that are BOTH Breakfast AND Lunch.';
+          }
+        });
+      });
+    </script>

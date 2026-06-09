@@ -36,10 +36,11 @@ namespace RecipeManagement.Models
 
         public DateTime? UpdatedAt { get; set; }
 
-        // Foreign key to user
         public string UserId { get; set; } = string.Empty;
-        
+
         [ForeignKey("UserId")]
         public virtual ApplicationUser? User { get; set; }
+
+        public virtual ICollection<RecipeCategory>? RecipeCategories { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using RecipeManagement.Data;
 using RecipeManagement.Models;
@@ -19,16 +20,61 @@ namespace RecipeManagement.Controllers
       _userManager = userManager;
     }
 
+    // ==================== HELPER METHODS ====================
+
+    // This method gets all categories from the database and marks which ones are selected
+    private async Task<List<SelectListItem>> GetCategoriesSelectListAsync(int[]? selectedCategoryIds = null)
+    {
+      var categories = await _context.Categories
+          .OrderBy(c => c.Name)
+          .Select(c => new SelectListItem
+          {
+            Value = c.Id.ToString(),
+            Text = c.Name,
+            Selected = selectedCategoryIds != null && selectedCategoryIds.Contains(c.Id)
+          })
+          .ToListAsync();
+
+      return categories;
+    }
+
+    private bool RecipeExists(int id)
+    {
+      return _context.Recipes.Any(e => e.Id == id);
+    }
+
+    // ==================== LIST RECIPES ====================
+
     // GET: Recipes
     [AllowAnonymous]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? categoryId = null)
     {
-      var recipes = await _context.Recipes
+      // Start with all recipes
+      var query = _context.Recipes
           .Include(r => r.User)
+          .Include(r => r.RecipeCategories)  // Include the categories
+              .ThenInclude(rc => rc.Category)  // Include the category details
+          .AsQueryable();
+
+      // If a category is selected, filter by that category
+      if (categoryId.HasValue)
+      {
+        query = query.Where(r => r.RecipeCategories.Any(rc => rc.CategoryId == categoryId.Value));
+      }
+
+      // Order by newest first
+      var recipes = await query
           .OrderByDescending(r => r.CreatedAt)
           .ToListAsync();
+
+      // Get all categories for the filter bar
+      ViewBag.Categories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+      ViewBag.SelectedCategory = categoryId;
+
       return View(recipes);
     }
+
+    // ==================== RECIPE DETAILS ====================
 
     // GET: Recipes/Details/5
     [AllowAnonymous]
@@ -41,6 +87,8 @@ namespace RecipeManagement.Controllers
 
       var recipe = await _context.Recipes
           .Include(r => r.User)
+          .Include(r => r.RecipeCategories)
+              .ThenInclude(rc => rc.Category)
           .FirstOrDefaultAsync(m => m.Id == id);
 
       if (recipe == null)
@@ -51,19 +99,40 @@ namespace RecipeManagement.Controllers
       return View(recipe);
     }
 
+    // ==================== CREATE RECIPE ====================
+
     // GET: Recipes/Create
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
+      // Get all categories with their colors and icons
+      var categories = await _context.Categories
+          .OrderBy(c => c.Name)
+          .Select(c => new SelectListItem
+          {
+            Value = c.Id.ToString(),
+            Text = c.Name,
+            Selected = false
+          })
+          .ToListAsync();
+
+      ViewBag.Categories = categories;
+
+      // Also pass the categories with their colors and icons separately
+      ViewBag.CategoriesWithDetails = await _context.Categories
+          .OrderBy(c => c.Name)
+          .ToListAsync();
+
       return View();
     }
 
     // POST: Recipes/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("Title,Description,Ingredients,Instructions,PrepTimeMinutes,CookTimeMinutes,Difficulty,Servings,ImageUrl")] Recipe recipe)
+    public async Task<IActionResult> Create([Bind("Title,Description,Ingredients,Instructions,PrepTimeMinutes,CookTimeMinutes,Difficulty,Servings,ImageUrl")] Recipe recipe, int[] selectedCategories)
     {
       if (ModelState.IsValid)
       {
+        // Get the current user
         var user = await _userManager.GetUserAsync(User);
         if (user != null)
         {
@@ -71,12 +140,34 @@ namespace RecipeManagement.Controllers
         }
         recipe.CreatedAt = DateTime.Now;
 
+        // Save the recipe
         _context.Add(recipe);
         await _context.SaveChangesAsync();
+
+        // Add the selected categories to the recipe
+        if (selectedCategories != null && selectedCategories.Any())
+        {
+          foreach (var categoryId in selectedCategories)
+          {
+            _context.RecipeCategories.Add(new RecipeCategory
+            {
+              RecipeId = recipe.Id,
+              CategoryId = categoryId
+            });
+          }
+          await _context.SaveChangesAsync();
+        }
+
+        TempData["Success"] = "Recipe created successfully!";
         return RedirectToAction(nameof(Index));
       }
+
+      // If something went wrong, reload the categories
+      ViewBag.Categories = await GetCategoriesSelectListAsync(selectedCategories);
       return View(recipe);
     }
+
+    // ==================== EDIT RECIPE ====================
 
     // GET: Recipes/Edit/5
     public async Task<IActionResult> Edit(int? id)
@@ -86,17 +177,40 @@ namespace RecipeManagement.Controllers
         return NotFound();
       }
 
-      var recipe = await _context.Recipes.FindAsync(id);
+      // Get the recipe with its categories
+      var recipe = await _context.Recipes
+          .Include(r => r.RecipeCategories)
+          .FirstOrDefaultAsync(r => r.Id == id);
+
       if (recipe == null)
       {
         return NotFound();
       }
 
+      // Check permission
       var user = await _userManager.GetUserAsync(User);
       if (user == null || (recipe.UserId != user.Id && !User.IsInRole("Admin")))
       {
         return Forbid();
       }
+
+      // Get all categories
+      var allCategories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+
+      // Get selected category IDs
+      var selectedCategoryIds = recipe.RecipeCategories?.Select(rc => rc.CategoryId).ToArray() ?? new int[0];
+
+      // Create SelectListItems with Selected property set
+      var categories = allCategories.Select(c => new SelectListItem
+      {
+        Value = c.Id.ToString(),
+        Text = c.Name,
+        Selected = selectedCategoryIds.Contains(c.Id)
+      }).ToList();
+
+      ViewBag.Categories = categories;
+      ViewBag.CategoriesWithDetails = allCategories;
+      ViewBag.SelectedCategories = selectedCategoryIds;
 
       return View(recipe);
     }
@@ -104,7 +218,7 @@ namespace RecipeManagement.Controllers
     // POST: Recipes/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,Ingredients,Instructions,PrepTimeMinutes,CookTimeMinutes,Difficulty,Servings,ImageUrl")] Recipe recipe)
+    public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,Ingredients,Instructions,PrepTimeMinutes,CookTimeMinutes,Difficulty,Servings,ImageUrl")] Recipe recipe, int[] selectedCategories)
     {
       if (id != recipe.Id)
       {
@@ -115,18 +229,24 @@ namespace RecipeManagement.Controllers
       {
         try
         {
-          var existingRecipe = await _context.Recipes.FindAsync(id);
+          // Get the existing recipe from the database
+          var existingRecipe = await _context.Recipes
+              .Include(r => r.RecipeCategories)
+              .FirstOrDefaultAsync(r => r.Id == id);
+
           if (existingRecipe == null)
           {
             return NotFound();
           }
 
+          // Check permission
           var user = await _userManager.GetUserAsync(User);
           if (user == null || (existingRecipe.UserId != user.Id && !User.IsInRole("Admin")))
           {
             return Forbid();
           }
 
+          // Update the recipe properties
           existingRecipe.Title = recipe.Title;
           existingRecipe.Description = recipe.Description;
           existingRecipe.Ingredients = recipe.Ingredients;
@@ -138,7 +258,27 @@ namespace RecipeManagement.Controllers
           existingRecipe.ImageUrl = recipe.ImageUrl;
           existingRecipe.UpdatedAt = DateTime.Now;
 
+          // Update categories - remove all existing categories first
+          if (existingRecipe.RecipeCategories != null)
+          {
+            existingRecipe.RecipeCategories.Clear();
+          }
+
+          // Add the newly selected categories
+          if (selectedCategories != null && selectedCategories.Any())
+          {
+            foreach (var categoryId in selectedCategories)
+            {
+              existingRecipe.RecipeCategories?.Add(new RecipeCategory
+              {
+                RecipeId = recipe.Id,
+                CategoryId = categoryId
+              });
+            }
+          }
+
           await _context.SaveChangesAsync();
+          TempData["Success"] = "Recipe updated successfully!";
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -153,8 +293,13 @@ namespace RecipeManagement.Controllers
         }
         return RedirectToAction(nameof(Index));
       }
+
+      // If something went wrong, reload the categories
+      ViewBag.Categories = await GetCategoriesSelectListAsync(selectedCategories);
       return View(recipe);
     }
+
+    // ==================== DELETE RECIPE ====================
 
     // GET: Recipes/Delete/5
     public async Task<IActionResult> Delete(int? id)
@@ -166,6 +311,8 @@ namespace RecipeManagement.Controllers
 
       var recipe = await _context.Recipes
           .Include(r => r.User)
+          .Include(r => r.RecipeCategories)
+              .ThenInclude(rc => rc.Category)
           .FirstOrDefaultAsync(m => m.Id == id);
 
       if (recipe == null)
@@ -197,6 +344,8 @@ namespace RecipeManagement.Controllers
       return RedirectToAction(nameof(Index));
     }
 
+    // ==================== MY RECIPES ====================
+
     // GET: Recipes/MyRecipes
     public async Task<IActionResult> MyRecipes()
     {
@@ -207,6 +356,8 @@ namespace RecipeManagement.Controllers
       }
 
       var recipes = await _context.Recipes
+          .Include(r => r.RecipeCategories)
+              .ThenInclude(rc => rc.Category)
           .Where(r => r.UserId == user.Id)
           .OrderByDescending(r => r.CreatedAt)
           .ToListAsync();
@@ -214,147 +365,7 @@ namespace RecipeManagement.Controllers
       return View(recipes);
     }
 
-    // GET: Recipes/Search
-    [AllowAnonymous]
-    public async Task<IActionResult> Search(string searchTerm, string? difficulty, int? minPrepTime, int? maxPrepTime, string? sortBy)
-    {
-      var viewModel = new RecipeSearchViewModel
-      {
-        SearchTerm = searchTerm,
-        Difficulty = difficulty,
-        MinPrepTime = minPrepTime,
-        MaxPrepTime = maxPrepTime,
-        SortBy = sortBy
-      };
-
-      // Start with all recipes
-      var query = _context.Recipes
-          .Include(r => r.User)
-          .AsQueryable();
-
-      // Apply search term filter
-      if (!string.IsNullOrWhiteSpace(searchTerm))
-      {
-        searchTerm = searchTerm.ToLower();
-        query = query.Where(r =>
-            r.Title.ToLower().Contains(searchTerm) ||
-            r.Description.ToLower().Contains(searchTerm) ||
-            r.Ingredients.ToLower().Contains(searchTerm) ||
-            r.Instructions.ToLower().Contains(searchTerm) ||
-            (r.User != null && (r.User.FirstName + " " + r.User.LastName).ToLower().Contains(searchTerm)) ||
-            (r.User != null && r.User.UserName != null && r.User.UserName.ToLower().Contains(searchTerm))
-        );
-      }
-
-      // Apply difficulty filter
-      if (!string.IsNullOrWhiteSpace(difficulty))
-      {
-        query = query.Where(r => r.Difficulty == difficulty);
-      }
-
-      // Apply time filters
-      if (minPrepTime.HasValue)
-      {
-        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) >= minPrepTime.Value);
-      }
-      if (maxPrepTime.HasValue)
-      {
-        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) <= maxPrepTime.Value);
-      }
-
-      // Apply sorting
-      viewModel.SortBy = sortBy;
-      query = sortBy switch
-      {
-        "Oldest First" => query.OrderBy(r => r.CreatedAt),
-        "Most Difficult" => query.OrderByDescending(r => r.Difficulty == "Hard")
-            .ThenByDescending(r => r.Difficulty == "Medium")
-            .ThenBy(r => r.Difficulty == "Easy"),
-        "Least Difficult" => query.OrderBy(r => r.Difficulty == "Easy")
-            .ThenBy(r => r.Difficulty == "Medium")
-            .ThenByDescending(r => r.Difficulty == "Hard"),
-        "Shortest Time" => query.OrderBy(r => r.PrepTimeMinutes + r.CookTimeMinutes),
-        "Longest Time" => query.OrderByDescending(r => r.PrepTimeMinutes + r.CookTimeMinutes),
-        _ => query.OrderByDescending(r => r.CreatedAt) // Newest First
-      };
-
-      viewModel.Recipes = await query.ToListAsync();
-
-      return View(viewModel);
-    }
-
-    // GET: Recipes/SearchMyRecipes
-    public async Task<IActionResult> SearchMyRecipes(string searchTerm, string? difficulty, int? minPrepTime, int? maxPrepTime, string? sortBy)
-    {
-      var user = await _userManager.GetUserAsync(User);
-      if (user == null)
-      {
-        return Challenge();
-      }
-
-      var viewModel = new RecipeSearchViewModel
-      {
-        SearchTerm = searchTerm,
-        Difficulty = difficulty,
-        MinPrepTime = minPrepTime,
-        MaxPrepTime = maxPrepTime,
-        SortBy = sortBy
-      };
-
-      // Start with user's recipes only
-      var query = _context.Recipes
-          .Where(r => r.UserId == user.Id)
-          .Include(r => r.User)
-          .AsQueryable();
-
-      // Apply search term filter
-      if (!string.IsNullOrWhiteSpace(searchTerm))
-      {
-        searchTerm = searchTerm.ToLower();
-        query = query.Where(r =>
-            r.Title.ToLower().Contains(searchTerm) ||
-            r.Description.ToLower().Contains(searchTerm) ||
-            r.Ingredients.ToLower().Contains(searchTerm) ||
-            r.Instructions.ToLower().Contains(searchTerm)
-        );
-      }
-
-      // Apply difficulty filter
-      if (!string.IsNullOrWhiteSpace(difficulty))
-      {
-        query = query.Where(r => r.Difficulty == difficulty);
-      }
-
-      // Apply time filters
-      if (minPrepTime.HasValue)
-      {
-        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) >= minPrepTime.Value);
-      }
-      if (maxPrepTime.HasValue)
-      {
-        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) <= maxPrepTime.Value);
-      }
-
-      // Apply sorting
-      viewModel.SortBy = sortBy;
-      query = sortBy switch
-      {
-        "Oldest First" => query.OrderBy(r => r.CreatedAt),
-        "Most Difficult" => query.OrderByDescending(r => r.Difficulty == "Hard")
-            .ThenByDescending(r => r.Difficulty == "Medium")
-            .ThenBy(r => r.Difficulty == "Easy"),
-        "Least Difficult" => query.OrderBy(r => r.Difficulty == "Easy")
-            .ThenBy(r => r.Difficulty == "Medium")
-            .ThenByDescending(r => r.Difficulty == "Hard"),
-        "Shortest Time" => query.OrderBy(r => r.PrepTimeMinutes + r.CookTimeMinutes),
-        "Longest Time" => query.OrderByDescending(r => r.PrepTimeMinutes + r.CookTimeMinutes),
-        _ => query.OrderByDescending(r => r.CreatedAt) // Newest First
-      };
-
-      viewModel.Recipes = await query.ToListAsync();
-
-      return View(viewModel);
-    }
+    // ==================== FAVORITES ====================
 
     // POST: Recipes/ToggleFavorite/5
     [HttpPost]
@@ -415,6 +426,9 @@ namespace RecipeManagement.Controllers
       var favoriteRecipes = await _context.Favorites
           .Include(f => f.Recipe)
               .ThenInclude(r => r.User)
+          .Include(f => f.Recipe)
+              .ThenInclude(r => r.RecipeCategories)
+                  .ThenInclude(rc => rc.Category)
           .Where(f => f.UserId == user.Id)
           .OrderByDescending(f => f.CreatedAt)
           .Select(f => f.Recipe)
@@ -423,7 +437,7 @@ namespace RecipeManagement.Controllers
       return View(favoriteRecipes);
     }
 
-    // GET: Recipes/CheckFavorite/5 (for API calls)
+    // GET: Recipes/CheckFavorite/5
     [HttpGet]
     [Authorize]
     public async Task<IActionResult> CheckFavorite(int id)
@@ -440,9 +454,95 @@ namespace RecipeManagement.Controllers
       return Json(new { isFavorite = isFavorite });
     }
 
-    private bool RecipeExists(int id)
+    // GET: Recipes/FilterByMultipleCategories
+    [AllowAnonymous]
+    public async Task<IActionResult> FilterByMultipleCategories(int[] selectedCategories, string? searchTerm, string? difficulty, int? minTime, int? maxTime, bool matchAllCategories = false)
     {
-      return _context.Recipes.Any(e => e.Id == id);
+      var viewModel = new CategoryFilterViewModel
+      {
+        SelectedCategoryIds = selectedCategories ?? new int[0],
+        SearchTerm = searchTerm,
+        Difficulty = difficulty,
+        MinTime = minTime,
+        MaxTime = maxTime,
+        MatchAllCategories = matchAllCategories
+      };
+
+      // Get all categories for the filter UI
+      viewModel.AllCategories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+
+      // Start with all recipes
+      var query = _context.Recipes
+          .Include(r => r.User)
+          .Include(r => r.RecipeCategories)
+              .ThenInclude(rc => rc.Category)
+          .AsQueryable();
+
+      // Filter by multiple categories
+      if (selectedCategories != null && selectedCategories.Any())
+      {
+        if (matchAllCategories)
+        {
+          // AND logic - recipe must have ALL selected categories
+          foreach (var categoryId in selectedCategories)
+          {
+            query = query.Where(r => r.RecipeCategories.Any(rc => rc.CategoryId == categoryId));
+          }
+        }
+        else
+        {
+          // OR logic - recipe can have ANY selected category
+          query = query.Where(r => r.RecipeCategories.Any(rc => selectedCategories.Contains(rc.CategoryId)));
+        }
+      }
+
+      // Filter by search term
+      if (!string.IsNullOrWhiteSpace(searchTerm))
+      {
+        searchTerm = searchTerm.ToLower();
+        query = query.Where(r =>
+            r.Title.ToLower().Contains(searchTerm) ||
+            r.Description.ToLower().Contains(searchTerm) ||
+            r.Ingredients.ToLower().Contains(searchTerm) ||
+            r.Instructions.ToLower().Contains(searchTerm));
+      }
+
+      // Filter by difficulty
+      if (!string.IsNullOrWhiteSpace(difficulty))
+      {
+        query = query.Where(r => r.Difficulty == difficulty);
+      }
+
+      // Filter by total time
+      if (minTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) >= minTime.Value);
+      }
+      if (maxTime.HasValue)
+      {
+        query = query.Where(r => (r.PrepTimeMinutes + r.CookTimeMinutes) <= maxTime.Value);
+      }
+
+      viewModel.Recipes = await query
+          .OrderByDescending(r => r.CreatedAt)
+          .ToListAsync();
+
+      return View(viewModel);
     }
+
+    // Helper method to get category color by ID
+    private string GetCategoryColor(int categoryId)
+    {
+      var category = _context.Categories.FirstOrDefault(c => c.Id == categoryId);
+      return category?.Color ?? "#6c757d";
+    }
+
+    // Helper method to get category icon by ID
+    private string GetCategoryIcon(int categoryId)
+    {
+      var category = _context.Categories.FirstOrDefault(c => c.Id == categoryId);
+      return category?.Icon ?? "fa-tag";
+    }
+
   }
 }

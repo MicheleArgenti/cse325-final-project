@@ -20,6 +20,32 @@
           <span asp-validation-for="Title" class="text-danger"></span>
         </div>
 
+        <!-- CATEGORIES AS CHECKBOXES -->
+        <div class="form-group mb-3">
+          <label class="form-label fw-bold">
+            <i class="fas fa-tags me-1"></i>Categories (Select all that apply)
+          </label>
+          <div class="categories-checkbox-group">
+            @if (ViewBag.CategoriesWithDetails != null)
+            {
+              foreach (var category in ViewBag.CategoriesWithDetails)
+              {
+                <label class="category-checkbox">
+                  <input type="checkbox" name="selectedCategories" value="@category.Id" />
+                  <span class="checkbox-label" style="background-color: @category.Color; border-color: @category.Color;">
+                    <i class="fas @category.Icon me-1"></i>
+                    @category.Name
+                  </span>
+                </label>
+              }
+            }
+          </div>
+          <small class="form-text text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            You can select multiple categories for your recipe
+          </small>
+        </div>
+
         <div class="form-group mb-3">
           <label asp-for="Description" class="form-label fw-bold"></label>
           <textarea asp-for="Description" class="form-control" rows="3"
@@ -30,7 +56,7 @@
         <div class="form-group mb-3">
           <label asp-for="Ingredients" class="form-label fw-bold"></label>
           <textarea asp-for="Ingredients" class="form-control" rows="6"
-                    placeholder="One ingredient per line&#10;Example:&#10;200g spaghetti&#10;2 large eggs&#10;100g pancetta"></textarea>
+                    placeholder="One ingredient per line"></textarea>
           <small class="form-text text-muted">Enter each ingredient on a new line</small>
           <span asp-validation-for="Ingredients" class="text-danger"></span>
         </div>
@@ -38,7 +64,7 @@
         <div class="form-group mb-3">
           <label asp-for="Instructions" class="form-label fw-bold"></label>
           <textarea asp-for="Instructions" class="form-control" rows="6"
-                    placeholder="Step by step instructions&#10;Example:&#10;1. Boil water in a large pot&#10;2. Add salt and pasta&#10;3. Cook until al dente"></textarea>
+                    placeholder="Step by step instructions"></textarea>
           <small class="form-text text-muted">Enter each step on a new line</small>
           <span asp-validation-for="Instructions" class="text-danger"></span>
         </div>

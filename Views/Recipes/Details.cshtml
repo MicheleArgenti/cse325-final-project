@@ -15,7 +15,6 @@
       <div class="d-flex justify-content-between align-items-start">
         <h1 class="mb-0">@Model.Title</h1>
 
-        @* FAVORITE BUTTON - Only show if user is logged in *@
         @if (User.Identity?.IsAuthenticated == true)
         {
           <form asp-action="ToggleFavorite" asp-route-id="@Model.Id" method="post" id="favoriteForm">
@@ -24,6 +23,21 @@
               <i id="favoriteIcon" class="far fa-heart fa-2x"></i>
             </button>
           </form>
+        }
+      </div>
+
+      <!-- CATEGORY BADGES - Show all categories for this recipe -->
+      <div class="category-badge-group mt-3 justify-content-center">
+        @if (Model.RecipeCategories != null && Model.RecipeCategories.Any())
+        {
+          @foreach (var recipeCategory in Model.RecipeCategories)
+          {
+            <span class="category-badge"
+                  style="background-color: @recipeCategory.Category.Color; font-size: 0.9rem; padding: 0.5rem 1rem;">
+              <i class="fas @recipeCategory.Category.Icon me-2"></i>
+              @recipeCategory.Category.Name
+            </span>
+          }
         }
       </div>
 
@@ -101,24 +115,15 @@
 
 @section Scripts {
   <script>
-    // This script checks if the current recipe is already in favorites
-    // and updates the heart icon accordingly
-
-    @if (User.Identity?.IsAuthenticated == true)
-      {
-        <text>
-            fetch('/Recipes/CheckFavorite/@Model.Id')
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.isFavorite) {
-                                    // Recipe is favorited - show solid red heart
-                                    const icon = document.getElementById('favoriteIcon');
-            icon.className = 'fas fa-heart fa-2x';
-            icon.style.color = '#e74c3c';
-                                }
-                            })
-                            .catch(error => console.log('Error checking favorite status:', error));
-        </text>
-    }
+    fetch('/Recipes/CheckFavorite/@Model.Id')
+      .then(response => response.json())
+      .then(data => {
+        if (data.isFavorite) {
+          const icon = document.getElementById('favoriteIcon');
+          icon.className = 'fas fa-heart fa-2x';
+          icon.style.color = '#e74c3c';
+        }
+      })
+      .catch(error => console.log('Error checking favorite status:', error));
   </script>
 }

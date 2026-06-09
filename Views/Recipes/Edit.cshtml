@@ -1,3 +1,4 @@
+@using System.Linq
 @model RecipeManagement.Models.Recipe
 
 @{
@@ -21,6 +22,40 @@
           <label asp-for="Title" class="form-label fw-bold"></label>
           <input asp-for="Title" class="form-control" placeholder="Enter recipe title" />
           <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <!-- CATEGORIES AS CHECKBOXES - WORKING VERSION -->
+        <div class="form-group mb-3">
+          <label class="form-label fw-bold">
+            <i class="fas fa-tags me-1"></i>Categories (Select all that apply)
+          </label>
+          <div class="categories-checkbox-group">
+            @if (ViewBag.CategoriesWithDetails != null)
+            {
+              // Convert ViewBag.SelectedCategories to a List<int> to use Contains
+              var selectedList = new List<int>();
+              if (ViewBag.SelectedCategories != null)
+              {
+                selectedList = ((int[])ViewBag.SelectedCategories).ToList();
+              }
+
+              foreach (var category in ViewBag.CategoriesWithDetails)
+              {
+                bool isSelected = selectedList.Contains(category.Id);
+                <label class="category-checkbox">
+                  <input type="checkbox" name="selectedCategories" value="@category.Id" @(isSelected ? "checked" : "") />
+                  <span class="checkbox-label" style="background-color: @category.Color; border-color: @category.Color;">
+                    <i class="fas @category.Icon me-1"></i>
+                    @category.Name
+                  </span>
+                </label>
+              }
+            }
+          </div>
+          <small class="form-text text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            You can select multiple categories for your recipe
+          </small>
         </div>
 
         <div class="form-group mb-3">

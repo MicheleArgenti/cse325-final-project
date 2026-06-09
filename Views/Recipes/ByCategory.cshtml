@@ -1,0 +1,41 @@
+@model IEnumerable<RecipeManagement.Models.Recipe>
+
+@{
+  ViewData["Title"] = $"{ViewBag.CategoryName} Recipes";
+}
+
+<div class="animate-fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+      <i class="fas @ViewBag.CategoryIcon me-2" style="color: @ViewBag.CategoryColor"></i>
+      @ViewBag.CategoryName Recipes
+    </h1>
+    <a asp-action="Index" class="btn btn-outline-custom">
+      <i class="fas fa-arrow-left me-2"></i>All Recipes
+    </a>
+  </div>
+
+  @if (!Model.Any())
+  {
+    <div class="empty-state">
+      <div class="empty-state-icon">🍽️</div>
+      <h4>No recipes in this category yet</h4>
+      <p>Be the first to add a recipe to @ViewBag.CategoryName!</p>
+      <a asp-action="Create" class="btn btn-primary-custom">
+        <i class="fas fa-plus-circle me-2"></i>Create Recipe
+      </a>
+    </div>
+  }
+  else
+  {
+    <div class="recipes-grid">
+      @foreach (var item in Model)
+      {
+        <!-- Same recipe card as in Index.cshtml -->
+        <div class="recipe-card">
+          <!-- Recipe card content here -->
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -5,6 +5,7 @@
 }
 
 <div class="animate-fade-in">
+  <!-- Header -->
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
     <h1 class="mb-3 mb-md-0">
       <i class="fas fa-utensils me-2" style="color: var(--primary-color);"></i>
@@ -21,6 +22,21 @@
         </a>
       }
     </div>
+  </div>
+
+  <!-- Category Filter Bar -->
+  <div class="category-filter mb-4">
+    <a asp-action="Index" class="category-chip @(ViewBag.SelectedCategory == null ? "active" : "")">
+      <i class="fas fa-th-large me-1"></i>All Recipes
+    </a>
+    @foreach (var category in ViewBag.Categories)
+    {
+      <a asp-action="Index" asp-route-categoryId="@category.Id"
+         class="category-chip @(ViewBag.SelectedCategory == category.Id ? "active" : "")"
+         style="--category-color: @category.Color">
+        <i class="fas @category.Icon me-1"></i>@category.Name
+      </a>
+    }
   </div>
 
   @if (!Model.Any())
@@ -43,6 +59,7 @@
       @foreach (var item in Model)
       {
         <div class="recipe-card">
+          <!-- Recipe Image -->
           <div class="card-img-container">
             @if (!string.IsNullOrEmpty(item.ImageUrl))
             {
@@ -54,6 +71,7 @@
                 <i class="fas fa-image fa-3x"></i>
               </div>
             }
+
             @if (User.Identity?.IsAuthenticated == true)
             {
               <form asp-action="ToggleFavorite" asp-route-id="@item.Id" method="post" class="favorite-form">
@@ -64,11 +82,38 @@
               </form>
             }
           </div>
+
+          <!-- Recipe Content -->
           <div class="card-content">
-            <h5 class="recipe-title">@item.Title</h5>
+            <!-- Title and Category Badges -->
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="recipe-title mb-0">@item.Title</h5>
+
+              <!-- MULTIPLE CATEGORY BADGES - This shows all categories for the recipe -->
+              <div class="category-badge-group">
+                @if (item.RecipeCategories != null && item.RecipeCategories.Any())
+                {
+                  @foreach (var recipeCategory in item.RecipeCategories.Take(2))
+                  {
+                    <span class="category-badge" style="background-color: @recipeCategory.Category.Color">
+                      <i class="fas @recipeCategory.Category.Icon me-1"></i>
+                      @recipeCategory.Category.Name
+                    </span>
+                  }
+                  @if (item.RecipeCategories.Count() > 2)
+                  {
+                    <span class="category-badge-more">
+                      +@(item.RecipeCategories.Count() - 2)
+                    </span>
+                  }
+                }
+              </div>
+            </div>
+
             <p class="recipe-description">
               @(item.Description?.Length > 100 ? item.Description.Substring(0, 100) + "..." : item.Description)
             </p>
+
             <div class="badge-container">
               <span class="custom-badge badge-difficulty">
                 <i class="fas fa-chart-line me-1"></i>@item.Difficulty
@@ -80,6 +125,7 @@
                 <i class="fas fa-users me-1"></i>@item.Servings
               </span>
             </div>
+
             <div class="recipe-meta">
               <i class="fas fa-user-circle me-1"></i>
               @(!string.IsNullOrEmpty(item.User?.FirstName) ? $"{item.User.FirstName} {item.User.LastName}" :
@@ -89,6 +135,8 @@
               @item.CreatedAt.ToString("MMM dd, yyyy")
             </div>
           </div>
+
+          <!-- Action Buttons -->
           <div class="card-footer bg-transparent">
             <div class="button-group">
               <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-view">
@@ -114,7 +162,6 @@ User.IsInRole("Admin")))
 </div>
 
 <script>
-  // Check favorite status for each recipe
   @if (User.Identity?.IsAuthenticated == true)
     {
             foreach (var item in Model)
