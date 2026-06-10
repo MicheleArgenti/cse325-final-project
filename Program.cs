@@ -5,21 +5,40 @@ using RecipeManagement.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load user secrets in development
+// Load configuration in order of priority
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();  // This makes Railway variables work!
+
+// Load User Secrets in development
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Get connection string
+// Get connection string - try multiple sources
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// If still null, try direct environment variable (Railway format)
+if (string.IsNullOrEmpty(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+}
 
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    throw new InvalidOperationException(
+        "Connection string 'DefaultConnection' not found. " +
+        "Please set it in appsettings.json, User Secrets, or Environment Variables."
+    );
 }
 
-// Configure PostgreSQL - THIS MUST BE BEFORE builder.Build()
+// Log connection info (without revealing password)
+Console.WriteLine($"🌍 Environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"🔗 Database: {(connectionString.Contains("localhost") ? "Local" : "Cloud")}");
+
+// Configure PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
@@ -53,15 +72,23 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Lax;
+
+    if (!builder.Environment.IsDevelopment())
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    }
 });
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-var app = builder.Build();  // ← AFTER all services are registered
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>();
+
+var app = builder.Build();
 
 // Configure HTTP pipeline
 if (app.Environment.IsDevelopment())
@@ -81,6 +108,8 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
@@ -91,20 +120,31 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-// Initialize database - THIS MUST BE AFTER app.Build()
+// Initialize database
 using (var scope = app.Services.CreateScope())
 {
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
     try
     {
-        await DbInitializer.InitializeAsync(scope.ServiceProvider);
-        Console.WriteLine("✅ Database initialization completed successfully!");
+        logger.LogInformation("Starting database initialization...");
+
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+
+        // This creates the database if it doesn't exist
+        await dbContext.Database.EnsureCreatedAsync();
+
+        // Initialize data (create admin user, categories, etc.)
+        await DbInitializer.InitializeAsync(services);
+
+        logger.LogInformation("Database initialization completed successfully!");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
-        Console.WriteLine("Check your connection string and make sure the database is accessible.");
-        // Don't throw, just log the error
+        logger.LogError(ex, "An error occurred while initializing the database.");
+        // Don't throw - let the app start but log the error
     }
 }
 
-app.Run();  // ← At the very end
+app.Run();

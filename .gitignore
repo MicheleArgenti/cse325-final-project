@@ -39,5 +39,4 @@ Thumbs.db
 .DS_Store
 
 # Settings files that may contain sensitive information
-appsettings.json
 appsettings.*.json
