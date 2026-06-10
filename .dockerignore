@@ -1,0 +1,17 @@
+bin/
+obj/
+*.db
+*.sqlite
+*.log
+*.tmp
+.vs/
+.vscode/
+.git/
+.github/
+.idea/
+*.user
+*.suo
+appsettings.Development.json
+.env
+README.md
+.gitignore

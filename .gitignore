@@ -40,3 +40,4 @@ Thumbs.db
 
 # Settings files that may contain sensitive information
 appsettings.*.json
+.env
