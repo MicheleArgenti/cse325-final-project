@@ -138,7 +138,7 @@ namespace RecipeManagement.Controllers
         {
           recipe.UserId = user.Id;
         }
-        recipe.CreatedAt = DateTime.Now;
+        recipe.CreatedAt = DateTime.UtcNow;
 
         // Save the recipe
         _context.Add(recipe);
@@ -256,7 +256,7 @@ namespace RecipeManagement.Controllers
           existingRecipe.Difficulty = recipe.Difficulty;
           existingRecipe.Servings = recipe.Servings;
           existingRecipe.ImageUrl = recipe.ImageUrl;
-          existingRecipe.UpdatedAt = DateTime.Now;
+          existingRecipe.UpdatedAt = DateTime.UtcNow;
 
           // Update categories - remove all existing categories first
           if (existingRecipe.RecipeCategories != null)
@@ -402,7 +402,7 @@ namespace RecipeManagement.Controllers
         {
           UserId = user.Id,
           RecipeId = id,
-          CreatedAt = DateTime.Now
+          CreatedAt = DateTime.UtcNow
         };
         _context.Favorites.Add(favorite);
         await _context.SaveChangesAsync();
@@ -581,7 +581,7 @@ namespace RecipeManagement.Controllers
         // Update existing review
         existingReview.Rating = rating;
         existingReview.Comment = comment;
-        existingReview.UpdatedAt = DateTime.Now;
+        existingReview.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         TempData["Success"] = "Your review has been updated!";
       }
@@ -594,7 +594,7 @@ namespace RecipeManagement.Controllers
           RecipeId = recipeId,
           Rating = rating,
           Comment = comment,
-          CreatedAt = DateTime.Now
+          CreatedAt = DateTime.UtcNow
         };
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();

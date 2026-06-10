@@ -5,11 +5,34 @@ using RecipeManagement.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+// Load user secrets in development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
 
+// Get connection string
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+}
+
+// Configure PostgreSQL - THIS MUST BE BEFORE builder.Build()
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+
+        npgsqlOptions.CommandTimeout(60);
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+    }));
+
+// Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -21,6 +44,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
+
+// Configure cookie settings
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Identity/Account/Login";
@@ -28,14 +53,17 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-var app = builder.Build();
+var app = builder.Build();  // ← AFTER all services are registered
 
-// Configure the HTTP request pipeline.
+// Configure HTTP pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -63,11 +91,20 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-// Create database and ensure it's created
+// Initialize database - THIS MUST BE AFTER app.Build()
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.EnsureCreated();
+    try
+    {
+        await DbInitializer.InitializeAsync(scope.ServiceProvider);
+        Console.WriteLine("✅ Database initialization completed successfully!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
+        Console.WriteLine("Check your connection string and make sure the database is accessible.");
+        // Don't throw, just log the error
+    }
 }
 
-app.Run();
+app.Run();  // ← At the very end

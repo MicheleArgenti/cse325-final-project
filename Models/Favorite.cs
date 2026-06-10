@@ -12,7 +12,7 @@ namespace RecipeManagement.Models
 
     public int RecipeId { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("UserId")]

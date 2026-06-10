@@ -4,6 +4,7 @@
 # Build results
 bin/
 obj/
+publish/
 
 # Migrate files
 Migrations/
@@ -36,3 +37,7 @@ secrets.json
 # OS-generated files
 Thumbs.db
 .DS_Store
+
+# Settings files that may contain sensitive information
+appsettings.json
+appsettings.*.json

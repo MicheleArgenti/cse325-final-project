@@ -18,7 +18,7 @@ namespace RecipeManagement.Models
     public string? Icon { get; set; }
     public string? Color { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public virtual ICollection<RecipeCategory>? RecipeCategories { get; set; }
   }

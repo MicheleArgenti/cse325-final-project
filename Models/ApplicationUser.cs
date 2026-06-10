@@ -10,7 +10,7 @@ namespace RecipeManagement.Models
     [PersonalData]
     public string? LastName { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public virtual ICollection<Recipe>? Recipes { get; set; }
 
