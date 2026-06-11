@@ -17,9 +17,5 @@ WORKDIR /app
 # Copy the published output from the build stage
 COPY --from=build /app/publish .
 
-# Set the port (Railway will override this)
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
-
 # Start the application
 ENTRYPOINT ["dotnet", "cse325-final-project.dll"]

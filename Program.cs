@@ -5,6 +5,27 @@ using RecipeManagement.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Helper to clean connection string (remove unsupported Npgsql parameters)
+static string CleanConnectionString(string? connectionString)
+{
+    if (string.IsNullOrEmpty(connectionString)) return string.Empty;
+
+    // Remove unsupported parameters for Npgsql
+    if (connectionString.Contains("DateTimeKind", StringComparison.OrdinalIgnoreCase))
+    {
+        var parts = connectionString.Split(';');
+        var cleanedParts = parts.Where(p => !p.TrimStart().StartsWith("DateTimeKind", StringComparison.OrdinalIgnoreCase));
+        connectionString = string.Join(";", cleanedParts);
+        Console.WriteLine("⚠️ Removed DateTimeKind from connection string (not supported by Npgsql)");
+    }
+
+    // Clean up any double semicolons
+    connectionString = connectionString.Replace(";;", ";");
+    connectionString = connectionString.Trim(';');
+
+    return connectionString;
+}
+
 // Load configuration in order of priority
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -25,6 +46,9 @@ if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 }
+
+// Clean the connection string (remove unsupported parameters)
+connectionString = CleanConnectionString(connectionString);
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -147,4 +171,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Use Railway's dynamic PORT - DO NOT hardcode the port
+// Railway automatically binds to the correct port
 app.Run();
