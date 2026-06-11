@@ -49,7 +49,7 @@
                             <i class="fas fa-user-plus me-2"></i>Get Started
                         </a>
                         <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-custom btn-lg ms-3">
-                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                            <i class="fas fa-user-plus me-2"></i>Login
                         </a>
                     </div>
                 }
@@ -133,7 +133,7 @@
                                 </div>
                                 <div class="recipe-meta">
                                     <i class="fas fa-user-circle me-1"></i>
-                                    @(!string.IsNullOrEmpty(recipe.User?.FirstName) ? $"{recipe.User.FirstName}                   {recipe.User.LastName}" : (recipe.User?.UserName ?? "Unknown"))
+                                    @(!string.IsNullOrEmpty(recipe.User?.FirstName) ? $"{recipe.User.FirstName}                    {recipe.User.LastName}" : (recipe.User?.UserName ?? "Unknown"))
                                     <br />
                                     <i class="far fa-calendar-alt me-1"></i>
                                     @recipe.CreatedAt.ToString("MMM dd, yyyy")
