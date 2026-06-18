@@ -15,7 +15,7 @@ namespace RecipeManagement.Models
     public virtual ICollection<Recipe>? Recipes { get; set; }
 
     // Add this property for favorites
-    public virtual ICollection<Favorite>? Favorites { get; set; }
+    // public virtual ICollection<Favorite>? Favorites { get; set; }
 
     // Display name property
     public string DisplayName

@@ -45,22 +45,45 @@ namespace RecipeManagement.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure Favorite relationships
-            builder.Entity<Favorite>()
-                .HasOne(f => f.User)
-                .WithMany()
-                .HasForeignKey(f => f.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Favorite>(entity =>
+            {
+                entity.ToTable("Favorites");
+                entity.HasKey(e => e.Id);
 
-            builder.Entity<Favorite>()
-                .HasOne(f => f.Recipe)
-                .WithMany()
-                .HasForeignKey(f => f.RecipeId)
-                .OnDelete(DeleteBehavior.Cascade);
+                entity.Property(e => e.Id)
+                    .HasColumnName("Id")
+                    .UseIdentityColumn();
 
-            // Ensure a user can only favorite a recipe once
-            builder.Entity<Favorite>()
-                .HasIndex(f => new { f.UserId, f.RecipeId })
-                .IsUnique();
+                // Map properties to columns
+                entity.Property(e => e.UserId)
+                    .HasColumnName("UserId")
+                    .IsRequired()
+                    .HasMaxLength(450);
+
+                entity.Property(e => e.RecipeId)
+                    .HasColumnName("RecipeId")
+                    .IsRequired();
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("CreatedAt")
+                    .IsRequired();
+
+                // Configure relationships WITHOUT creating shadow properties
+                entity.HasOne(f => f.User)
+                    .WithMany()  // No inverse navigation
+                    .HasForeignKey(f => f.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(f => f.Recipe)
+                    .WithMany()  // No inverse navigation
+                    .HasForeignKey(f => f.RecipeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Unique constraint
+                entity.HasIndex(f => new { f.UserId, f.RecipeId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_Favorites_UserId_RecipeId");
+            });
 
             // Configure Review relationships
             builder.Entity<Review>()
